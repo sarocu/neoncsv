@@ -1,0 +1,20 @@
+[package]
+name = "webcsv"
+version = "0.1.0"
+authors = ["sarocu <sam@sarocu.com>"]
+license = "MIT"
+build = "build.rs"
+edition = "2018"
+exclude = ["artifacts.json", "index.node"]
+
+[lib]
+name = "webcsv"
+crate-type = ["cdylib"]
+
+[build-dependencies]
+neon-build = "0.7.1"
+
+[dependencies]
+neon = "0.7.1"
+csv = "1.0.0-beta.5"
+csv-index = "0.1.6"
