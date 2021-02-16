@@ -9,7 +9,9 @@
     "neon-cli": "^0.7.1"
   },
   "scripts": {
-    "install": "neon build",
-    "test": "node lib/index.js"
+    "build": "neon build",
+    "test": "node lib/index.js",
+    "lint:rust:fix": "rustfmt native/src/*",
+    "clean": "rm -rf native/target"
   }
 }

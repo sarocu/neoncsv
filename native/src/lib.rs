@@ -30,7 +30,7 @@ declare_types! {
         method create_index_sync(mut cx) {
             let this = cx.this();
             let file_path = cx.argument::<JsString>(0)?;
-            
+
             let reader = csv::Reader::from_path(file_path.value());
             let mut index_file_name: String = file_path.value();
             index_file_name.push_str(&".idx");
@@ -41,46 +41,68 @@ declare_types! {
             csv_index::RandomAccessSimple::create(&mut reader.unwrap(), &mut index_file);
 
             csv_index::RandomAccessSimple::open(File::open(&index_file_name).unwrap());
-            let path = cx.string(&index_file_name);
+            let path = cx.string(index_file_name.to_owned());
             this.set(&mut cx, "index_path", path);
             Ok(cx.string(index_file_name).upcast())
         }
 
-        method slice(mut cx) {
+        method paginate(mut cx) {
             let this = cx.this();
             let start = cx.argument::<JsNumber>(0)?;
-            let end = cx.argument::<JsNumber>(1)?;
+            let limit = cx.argument::<JsNumber>(1)?;
 
-            println!("slice at {:?}", start.value());
+            println!("slice at {:?}", start.value() as u32);
 
-            let reader_path = this
+            // let getPaths = |cx: CallContext<JsCsv> | {
+            //     let guard = cx.lock();
+            //     let csv = this.borrow(&guard);
+            //     return (csv.file_path.clone(), csv.index_path.clone())
+            // };
+
+            // let (reader_path, index_path) = getPaths(cx);
+
+
+            // let reader_path = this
+            //     .get(&mut cx, "file_path")?
+            //     .downcast::<JsString>().or_throw(&mut cx)?
+            //     .value();
+
+            let reader_path = {
+                let guard = cx.lock();
+                let path = this.borrow(&guard).file_path.to_owned(); path
+            };
+
+            println!("file: {:?}", reader_path);
+
+            let index_path = this
                 .get(&mut cx, "index_path")?
                 .downcast::<JsString>().or_throw(&mut cx)?
                 .value();
 
-            println!("index: {:?}", reader_path);
+            println!("file: {:?}", index_path);
 
-            // TODO: set the seek and return a range of rows
-            
-            Ok(cx.string("cool").upcast())
+            let mut reader = csv::Reader::from_path(reader_path).unwrap();
+            let mut index = RandomAccessSimple::open(File::open(&index_path).unwrap()).unwrap();
+
+            let pos = index.get(start.value() as u64).unwrap();
+            reader.seek(pos);
+            let rows: Handle<JsArray> = JsArray::new(&mut cx, limit.value() as u32);
+
+            for i in 0..limit.value() as i64 {
+                let row = reader.records().next().unwrap().unwrap();
+                let row_values: Handle<JsArray> = JsArray::new(&mut cx, row.len() as u32);
+                let mut p = 0;
+                for field in row.iter() {
+                    let field_value = cx.string(field.to_string());
+                    row_values.set(&mut cx, p, field_value);
+                    p = p + 1;
+                }
+                rows.set(&mut cx, i as u32, row_values).unwrap();
+            }
+
+            Ok(rows.upcast())
         }
     }
 }
-
-// impl CsvFile {
-//     pub fn create_index_file(file_path: String) -> Result<String, JsValue> {
-//         let index = CsvFile::create_index_sync(file_path);
-
-//         let mut index = match index {
-//             Ok(i) => JsValue::from("success"),
-//             Err(e) => JsValue::from("couldn't create index"),
-//         };
-//         Ok("success".to_string())
-//     }
-// }
-
-// register_module!(mut cx, {
-//     cx.export_function("hello", hello)
-// });
 
 register_module!(mut m, { m.export_class::<JsCsv>("CsvFile") });
