@@ -17,9 +17,6 @@ declare_types! {
     pub class JsCsv for CsvFile {
         init(mut cx) {
             let file_path: Handle<JsString> = cx.argument::<JsString>(0)?;
-            println!("path: {}", file_path.value());
-            // let this = cx.this();
-            // let index_path = create_index_sync(file_path);
 
             Ok(CsvFile {
                 file_path: file_path.value(),
@@ -46,40 +43,28 @@ declare_types! {
             Ok(cx.string(index_file_name).upcast())
         }
 
+        method set_index(mut cx) {
+            let this = cx.this();
+            let index_path = cx.argument::<JsString>(0)?;
+            let path = cx.string(index_path.value());
+            this.set(&mut cx, "index_path", path);
+            Ok(cx.string(index_path.value()).upcast())
+        }
+
         method paginate(mut cx) {
             let this = cx.this();
             let start = cx.argument::<JsNumber>(0)?;
             let limit = cx.argument::<JsNumber>(1)?;
-
-            println!("slice at {:?}", start.value() as u32);
-
-            // let getPaths = |cx: CallContext<JsCsv> | {
-            //     let guard = cx.lock();
-            //     let csv = this.borrow(&guard);
-            //     return (csv.file_path.clone(), csv.index_path.clone())
-            // };
-
-            // let (reader_path, index_path) = getPaths(cx);
-
-
-            // let reader_path = this
-            //     .get(&mut cx, "file_path")?
-            //     .downcast::<JsString>().or_throw(&mut cx)?
-            //     .value();
 
             let reader_path = {
                 let guard = cx.lock();
                 let path = this.borrow(&guard).file_path.to_owned(); path
             };
 
-            println!("file: {:?}", reader_path);
-
             let index_path = this
                 .get(&mut cx, "index_path")?
                 .downcast::<JsString>().or_throw(&mut cx)?
                 .value();
-
-            println!("file: {:?}", index_path);
 
             let mut reader = csv::Reader::from_path(reader_path).unwrap();
             let mut index = RandomAccessSimple::open(File::open(&index_path).unwrap()).unwrap();
