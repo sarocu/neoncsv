@@ -1,4 +1,5 @@
 use neon::prelude::*;
+use rayon::prelude::*;
 
 extern crate csv;
 // use csv::{Position, Reader};
@@ -87,6 +88,40 @@ declare_types! {
 
             Ok(rows.upcast())
         }
+
+        method mapLambda(mut cx: FunctionContext) -> JsResult<JsString> {
+            let this = cx.this();
+
+            let reader_path = {
+                let guard = cx.lock();
+                let path = this.borrow(&guard).file_path.to_owned(); path
+            };
+
+            let index_path = this
+                .get(&mut cx, "index_path")?
+                .downcast::<JsString>().or_throw(&mut cx)?
+                .value();
+
+            let mut reader = csv::Reader::from_path(reader_path).unwrap();
+            let mut index = RandomAccessSimple::open(File::open(&index_path).unwrap()).unwrap();
+
+            // call helper function with JS func + a set of rows
+            let mapFunction = cx.argument::<JsFunction>(0)?;
+
+            // file name to save the transformed data to
+            let filePath = cx.argument::<JsString>(1)?;
+            let mut writer = csv::Writer::from_path(cx.string(filePath.value())).unwrap();
+
+            reader.records().par_iter()
+                .map(|&row| {
+                    let transformedRow = mapFunction.call(&mut cx, null, row);
+                    writer.write_record(&transformedRow).unwrap();
+                });
+
+            writer.flush().unwrap();
+            Ok(filePath.upcast())
+        }
+
     }
 }
 

@@ -6,13 +6,8 @@ const {
 
 const path = "/home/sam/Projects/webcsv/tests/robots.csv"
 const csv = new CsvFile(path);
-
 csv.set_index("/home/sam/Projects/webcsv/tests/robots.csv.idx")
 
-const f = (row) => {
-    return row.map((item) => {
-        item.toLowerCase();
-    })
-}
+const rows = csv.paginate(0,100);
+console.log(rows)
 
-csv.mapLambda(f, "/home/sam/Projects/webcsv/tests/robotsLower.csv")
