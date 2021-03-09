@@ -89,7 +89,7 @@ declare_types! {
             Ok(rows.upcast())
         }
 
-        method mapLambda(mut cx: FunctionContext) -> JsResult<JsString> {
+        method mapLambda(mut cx){
             let this = cx.this();
 
             let reader_path = {
@@ -110,13 +110,42 @@ declare_types! {
 
             // file name to save the transformed data to
             let filePath = cx.argument::<JsString>(1)?;
-            let mut writer = csv::Writer::from_path(cx.string(filePath.value())).unwrap();
+            let mut writer = csv::Writer::from_path(filePath.value()).unwrap();
+                
+            let last = index.len() - 1;
+            let mut rowIds: Vec<u64> = (0..last).collect();
 
-            reader.records().par_iter()
-                .map(|&row| {
-                    let transformedRow = mapFunction.call(&mut cx, null, row);
-                    writer.write_record(&transformedRow).unwrap();
-                });
+            let null = cx.null();
+
+            let call_js_function = move |row: csv::StringRecord| {
+                let mut jsRow: Vec<Handle<JsString>> = Vec::with_capacity(row.len());
+                for field in row.iter() {
+                    jsRow.push(cx.string(field.to_string()));
+                }
+                let newJsRow = mapFunction.call(&mut cx, null, jsRow)?.downcast::<JsArray>().or_throw(&mut cx)?;
+                let newRow = newJsRow.to_vec(&mut cx)?;
+                let newRustRow: Vec<String> = newRow.iter().map(|&item| {
+                    item
+                        .downcast::<JsString>().or_throw(&mut cx).unwrap()
+                        .value()
+                }).collect();
+                
+                Ok(vec!["things"])
+            };
+
+            rowIds.par_iter_mut()
+            .map(|rowId: &mut u64| {
+                // this might be dumb to constantly be seeking in diff threads
+                let ownedId: u64 = rowId.to_owned();
+                let pos = index.get(ownedId).unwrap();
+                reader.seek(pos).unwrap();
+                let row = reader.records().next().unwrap().unwrap();
+                
+                let newRow = call_js_function(row).unwrap();
+
+                writer.write_record(newRow).unwrap();
+                return Ok(String::from("hi"))
+            });
 
             writer.flush().unwrap();
             Ok(filePath.upcast())
