@@ -1,0 +1,17 @@
+{
+  "name": "neoncsv",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "author": "Sam Currie (sarocu)",
+  "license": "ISC",
+  "dependencies": {
+    "typescript": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^17.0.2"
+  }
+}

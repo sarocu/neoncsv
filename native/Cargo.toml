@@ -15,7 +15,10 @@ crate-type = ["cdylib"]
 neon-build = "0.7.1"
 
 [dependencies]
-neon = "0.7.1"
-csv = "1.0.0-beta.5"
+csv = "1.1.6"
 csv-index = "0.1.6"
-rayon = "1.5"
+
+[dependencies.neon]
+version = "0.10.0-alpha.3"
+default-features = false
+features = ["napi-6", "promise-api", "task-api"]
